@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Loto M1">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="../favicon.png">
+<title>Loto M1</title>
+<style>
+  body { margin: 0; background: #f4f6fb; color: #1a1f2e; font-family: -apple-system, Helvetica, Arial, sans-serif; font-size: 15px; }
+  header { background: #10203a; color: #fff; padding: 12px 16px; font-size: 17px; font-weight: bold; }
+  .wrap { padding: 12px 16px 32px; }
+  .seg { display: table; width: 100%; table-layout: fixed; margin: 0 0 8px; border: 1px solid #3949ab; border-radius: 8px; overflow: hidden; }
+  .seg a { display: table-cell; text-align: center; padding: 8px 2px; color: #3949ab; text-decoration: none; font-size: 14px; border-left: 1px solid #3949ab; }
+  .seg a:first-child { border-left: 0; }
+  .seg a.on { background: #3949ab; color: #fff; }
+  h2 { font-size: 16px; margin: 14px 0 8px; }
+  .balls span { display: inline-block; min-width: 40px; margin: 0 6px 6px 0; padding: 8px 4px; text-align: center; border-radius: 20px; background: #dfe3ff; font-size: 20px; font-weight: bold; }
+  .balls span.j { background: #ffe0b2; }
+  .balls small { display: block; font-size: 10px; font-weight: normal; color: #555; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; background: #fff; }
+  td, th { border-bottom: 1px solid #e0e3ec; padding: 5px 3px; text-align: right; }
+  td:first-child, th:first-child { text-align: left; }
+  .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  p.note { font-size: 12px; color: #5a6070; line-height: 1.4; }
+  #status { color: #5a6070; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #12151d; color: #e6e8ef; }
+    table { background: #1b1f2a; }
+    td, th { border-color: #2c3140; }
+    .balls span { background: #2b3566; color: #fff; }
+    .balls span.j { background: #6b4a12; }
+    .balls small { color: #c5c9d6; }
+    .seg { border-color: #8c9eff; } .seg a { color: #8c9eff; border-color: #8c9eff; } .seg a.on { background: #8c9eff; color: #12151d; }
+    p.note, #status { color: #a0a6b6; }
+  }
+</style>
+</head>
+<body>
+<header>Loto M1 <span style="font-weight:normal;font-size:13px">· versiune lite</span></header>
+<div class="wrap">
+  <div class="seg" id="games"></div>
+  <div class="seg" id="modes"><a data-v="M1">M1 (6 bile)</a><a data-v="T3">Tandem 3</a></div>
+  <div id="t3opts" style="display:none">
+    <div class="seg" id="vars"><a data-v="R">R: urnă redusă</a><a data-v="G">G: pas ciclic</a></div>
+    <div class="seg" id="lags"><a data-v="2">a = 2</a><a data-v="3">a = 3</a></div>
+  </div>
+  <div id="status">Se încarcă datele…</div>
+  <div id="out"></div>
+  <p class="note">Extragerile sunt independente: orice combinație are aceeași probabilitate. Aplicația are scop didactic și nu oferă pronosticuri garantate.</p>
+</div>
+<script src="loto.js"></script>
+<script>
+(function () {
+  var st = { g: 0, mode: 'M1', v: 'G', a: 3 }, cache = {};
+  function $(id) { return document.getElementById(id); }
+  function load(file, cb) {
+    var x = new XMLHttpRequest();
+    x.open('GET', '../assets/assets/data/' + file, true);
+    x.onreadystatechange = function () {
+      if (x.readyState !== 4) return;
+      if (x.status === 200 || (x.status === 0 && x.responseText)) cb(x.responseText);
+      else $('status').innerHTML = 'Eroare la încărcarea ' + file + ' (' + x.status + ')';
+    };
+    x.send();
+  }
+  function seg(id, key, conv) {
+    var as = $(id).getElementsByTagName('a');
+    for (var i = 0; i < as.length; i++) {
+      as[i].className = String(st[key]) === as[i].getAttribute('data-v') ? 'on' : '';
+      as[i].onclick = (function (a) { return function () { st[key] = conv(a.getAttribute('data-v')); render(); }; })(as[i]);
+    }
+  }
+  function ball(v, lbl, j) { return '<span' + (j ? ' class="j"' : '') + '>' + v + '<small>' + lbl + '</small></span>'; }
+  function row(name, vals) { var h = '<tr><td>' + name + '</td>'; for (var i = 0; i < vals.length; i++) h += '<td>' + vals[i] + '</td>'; return h + '</tr>'; }
+  function f3(a) { var o = []; for (var i = 0; i < a.length; i++) o.push(a[i].toFixed(3)); return o; }
+  function render() {
+    var g = Loto.GAMES[st.g], gh = '';
+    for (var i = 0; i < Loto.GAMES.length; i++) gh += '<a data-v="' + i + '">' + Loto.GAMES[i].name + '</a>';
+    $('games').innerHTML = gh;
+    seg('games', 'g', function (v) { return +v; }); seg('modes', 'mode', String);
+    seg('vars', 'v', String); seg('lags', 'a', function (v) { return +v; });
+    $('t3opts').style.display = st.mode === 'T3' ? 'block' : 'none';
+    var c = cache[g.name];
+    if (!c) {
+      $('status').innerHTML = 'Se calculează…'; $('out').innerHTML = '';
+      load(g.file, function (csv) {
+        setTimeout(function () { cache[g.name] = { m1: Loto.runM1(g, csv), t3: Loto.prepareTandem(g, csv) }; render(); }, 20);
+      });
+      return;
+    }
+    $('status').innerHTML = '';
+    var h = '', hd, k;
+    if (st.mode === 'M1') {
+      var r = c.m1;
+      h += '<h2>Prognoza pentru tragerea de după ' + r.lastDate + '</h2><div class="balls">';
+      for (k = 0; k < r.forecast.length; k++) h += ball(r.forecast[k], g.balls[k][0], g.balls[k][2] !== g.balls[0][2]);
+      hd = '<tr><th></th>'; for (k = 0; k < g.balls.length; k++) hd += '<th>' + g.balls[k][0] + '</th>';
+      h += '</div><div class="scroll"><table>' + hd + '</tr>' + row('Ultima', r.lastDraw) + row('x̂', f3(r.x)) +
+           row('x′ (M1)', f3(r.xm)) + row('Prognoză', r.forecast) + '</table></div>' +
+           '<p class="note">' + r.n + ' trageri, verificare coeficienți: ' + r.errors + ' erori. Prognoza este ultima extragere ușor deplasată spre media urnei.</p>';
+    } else {
+      var d = c.t3, f = d.forecast(st.a, st.v), isR = st.v === 'R', lag = isR ? st.a : 1;
+      h += '<h2>Prognoza pentru tragerea de după ' + d.lastDate + '</h2><div class="balls">';
+      for (k = 0; k < 3; k++) h += ball(f.r[k], 'N' + (k + 1));
+      h += '</div><div class="scroll"><table><tr><th></th><th>N1</th><th>N2</th><th>N3</th></tr>' + row('Ultima', d.lastDraw) +
+           row(isR ? 'Serie (P₁,s₂,s₃)' : 'Serie (P₁,d₂,d₃)', [d.series.P1[d.n - st.a], d.series[isR ? 's2' : 'd2'][d.n - lag], d.series[isR ? 's3' : 'd3'][d.n - lag]]) +
+           row('Telescopat', f3(f.hats)) + row('Prognoză', f.r) + '</table></div>' +
+           '<p class="note">Bila 1: x̂₁ = ((ln(N−a)+1)/(ln N+1))²·P₁(N−a+1). ' +
+           (isR ? 'Bilele 2 și 3: rangul în urna fără bilele anterioare, telescopat până la N−a; excludere exactă.'
+                : 'Bilele 2 și 3: pas ciclic față de bila anterioară, telescopat din ultima tragere; pasul nu poate fi 0.') +
+           ' ' + d.n + ' trageri, verificare coeficienți (5 serii): ' + d.errors + ' erori.</p>';
+    }
+    $('out').innerHTML = h;
+  }
+  render();
+})();
+</script>
+</body>
+</html>

@@ -15,6 +15,10 @@
     the `--base-href` argument provided to `flutter build`.
   -->
   <base href="./">
+  <script>
+    // Safari vechi (ex. iPhone 5 / iOS 10) nu poate rula Flutter web: trimite la versiunea lite.
+    if (typeof WebAssembly !== 'object' || typeof window.structuredClone !== 'function') { location.replace('lite/'); }
+  </script>
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
